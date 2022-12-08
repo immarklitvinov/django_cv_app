@@ -8,10 +8,12 @@ from itertools import chain
 import random
 from datetime import datetime
 from django.template.loader import render_to_string
-from html.parser import HTMLParser
-# import wkhtmltopdf
-
+import pdfkit
+import subprocess
+from PIL import Image
+import os
 import tempfile
+import fpdf
 
 # Create your views here.
 
@@ -117,24 +119,25 @@ def export_pdf(request):
     
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename=my_cv_' + str(datetime.now()) + '.pdf'
-    
     response['Content-Transfer-Encoding'] = 'binary'
     
-    # html_string = render_to_string('templates/pdf-output')
     user_profile = Profile.objects.get(user=request.user)
-    html_string = render_to_string('templates/pdf-output') # pdf-output.html
-    with open('current_cv.html', 'w') as f:
+    html_string = render_to_string('./pdf-output.html', {'name': user_profile.name, 'bio': user_profile.bio, 'src': user_profile.profileimg, 'location': user_profile.location}) # pdf-output.html
+    
+    with open('render.html', 'w') as f:
         f.write(html_string)
-    # with open('current_cv.html') as f:
-        # contents = f.read()
     
-    result = wkhtmltopdf.WKhtmlToPdf('current_cv.html', 'current_cv.pdf')
+    pdfkit.from_file('render.html', 'current_cv.pdf')
     
-    with tempfile.NamedTemporaryFile(delete=True) as output:
-        output.write(result)
+    with open('current_cv.pdf', "rb") as f:
+        content = f.read()
+
+    with tempfile.NamedTemporaryFile(delete=False) as output:
+        output.write(content)        
         output.flush()
         
         output=open(output.name,'rb')
         response.write(output.read())
-        
+    
+    
     return response
